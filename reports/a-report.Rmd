@@ -60,6 +60,7 @@ estimativas = estimativas_raw %>%
         DeveloperPerformance = mean(DeveloperPerformance)
     ) %>%
     ungroup()
+
 ```
 
 ### Dados por time
@@ -70,11 +71,82 @@ por_time = estimativas_raw %>%
     summarise(devs = NROW(unique(DeveloperID)), 
               erro_medio_abs = mean(abs(HoursEstimate - HoursActual)), 
               estimativas = n())
+
+glimpse(por_time)
+
 ```
 
-
 ## Qual a relação entre as estimativas e horas reais tomadas na empresa como um todo e em diferentes categorias de tarefa?
+
+```{r}
+glimpse(estimativas)
+```
+
+Ao avaliar a relação entre duas variáveis, é importante determinar como as variáveis estão relacionadas. Relações lineares são mais comuns, mas as variáveis também podem ter uma relação não linear ou monotônica, como mostrado abaixo. Também é possível que não haja nenhuma relação entre as variáveis. Na tentativa de clarificar nossos estudos sobre as relações criamos um gráfico de dispersão das variáveis para avaliar a relação. Visualmente é possível perceber não fica muito claro estabelecer uma relação de linearidade entre as duas variáves.
+
+```{r}
+estimativas %>%
+    filter(!is.na(HoursEstimate), !is.na(HoursActual)) %>%
+    ggplot(aes(x = HoursEstimate, y = HoursActual)) +
+    geom_point(colour = "brown", size = 1, alpha=.4) 
+```
+
+Como forma de aprofundar nossas percepções apresentamos uma comparação das possíveis correlações possíveis. 
+Em uma relação monotônica, as variáveis tendem a mover-se na mesma direção relativa, mas não necessariamente a uma taxa constante. Em uma relação linear, as variáveis se movem na mesma direção, a uma taxa constante.  O coeficiente de correlação de Pearson para esses dados é 0.316, mas a correlação de Spearman é maior, 0.826.
+
+```{r}
+estimativas %>%
+    summarise(
+        pearson_corr = cor(HoursActual, HoursEstimate, method = "pearson"),
+        spearman_corr = cor(HoursActual, HoursEstimate, method = "spearman"), 
+        kendall_corr = cor(HoursActual, HoursEstimate, method = "kendall")
+        )
+```
+
+Quando avaliadas sob a ótica de diferentes categorias a correlação de Spearman ainda tem maior destaque, no entanto a correlação de Kendall apresenta valores expressivos, acima de 0.70. O coeficiente de Kendall é, muitas vezes, interpretado como uma medida de concordância entre dois conjuntos de classificações relativas a um conjunto de objetos de estudo. Intuitivamente, a correlação de Kendall enfatiza uma similaridade entre as duas variáveis 
+
+```{r}
+estimativas %>%
+    group_by(Category) %>% 
+    summarise(
+        pearson_corr = cor(HoursActual, HoursEstimate, method = "pearson"),
+        spearman_corr = cor(HoursActual, HoursEstimate, method = "spearman"), 
+        kendall_corr = cor(HoursActual, HoursEstimate, method = "kendall")
+        )
+```
+
 
 
 ## Equipes com mais desenvolvedores produzem estimativas com mais ou menos erro que equipes menores? 
 
+
+```{r}
+glimpse(por_time)
+```
+
+Primeiro passo, examinar o formato dos dados.
+
+```{r}
+por_time %>%
+    filter(!is.na(devs), !is.na(erro_medio_abs)) %>%
+    ggplot(aes(x = devs, y = erro_medio_abs)) +
+    geom_point(colour = "orange", size = 1, alpha=.4) 
+```
+
+É possível observar que temos alguns projetos que fogem ao padrão  do erro médio absoluto.
+
+```{r}
+por_time %>% 
+  filter(erro_medio_abs > 25)
+```
+
+É possível observar que as correções não são tão expressivas. Aparentemente a quantidade de desenvolvedores não influencia na quantidade de erros. Interessante observar na distribuição acima que equipes com 16 desenvolvedores realmente tem uma taxa de erro menor, no entanto equipes com entre 10 e 15 desenvolvedores apresentam erros maiores se comparadas com equipes que possuem entre 1 e 4 desenvolvedores.
+
+```{r}
+por_time %>%
+    summarise(
+        pearson_corr = cor(devs, erro_medio_abs, method = "pearson"),
+        spearman_corr = cor(devs, erro_medio_abs, method = "spearman"), 
+        kendall_corr = cor(devs, erro_medio_abs, method = "kendall")
+        )
+```
